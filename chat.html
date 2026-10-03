@@ -20,15 +20,14 @@ body { margin:0; padding:0; background:#0A0E14; color:#fff; font-family:sans-ser
 <script>
 const SUPABASE_URL = "https://xrfzqlwrkidsblxofevj.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_9l8AW-w--GORou1AaAD95g_TOQrQ-0f";
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const loaderSb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 async function loadLatest() {
-  const { data, error } = await sb.from("app_config").select("chat_html").eq("id", 1).single();
+  const { data, error } = await loaderSb.from("app_config").select("chat_html").eq("id", 1).single();
   if (error || !data || !data.chat_html) {
     document.body.innerHTML = "<div style='text-align:center;'>加载失败，请刷新重试<br><small>如果是第一次使用，请先在后台上传版本</small></div>";
     return;
   }
-  // 把最新版页面写到当前页面
   document.open();
   document.write(data.chat_html);
   document.close();
