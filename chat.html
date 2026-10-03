@@ -647,7 +647,10 @@ html, body {
 <div class="modal-overlay" id="addFriendModal">
   <div class="modal-box">
     <div class="modal-title">添加好友</div>
-    <input type="text" class="modal-input" id="friendAccountId" placeholder="输入对方账号ID（如 CC-XXXXXX）">
+    <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px; line-height:1.5;">
+      让好友点自己头像，就能看到他的账号ID，发给你就行。
+    </div>
+    <input type="text" class="modal-input" id="friendAccountId" placeholder="输入对方账号ID（如 CC-AB12CD）">
     <div class="modal-btns">
       <button class="modal-btn cancel" onclick="closeAddFriend()">取消</button>
       <button class="modal-btn ok" onclick="addFriend()">发起对话</button>
@@ -655,11 +658,44 @@ html, body {
   </div>
 </div>
 
+<!-- 个人资料弹窗 -->
+<div class="modal-overlay" id="profileModal">
+  <div class="modal-box">
+    <div class="modal-title">个人资料</div>
+    <div style="text-align:center; margin:15px 0;">
+      <div id="profileAvatarPreview" style="width:60px; height:60px; border-radius:50%; margin:0 auto; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:600; color:#fff; overflow:hidden; cursor:pointer;" onclick="document.getElementById('avatarUpload').click()">
+        我
+      </div>
+      <div style="font-size:11px; color:var(--accent); margin-top:6px; cursor:pointer;" onclick="document.getElementById('avatarUpload').click()">点击上传自定义头像</div>
+      <input type="file" id="avatarUpload" accept="image/*" style="display:none;" onchange="handleAvatarUpload(event)">
+    </div>
+    <div style="font-size:12px; color:var(--text-secondary); margin-bottom:5px;">我的账号ID（自动复制）</div>
+    <div style="background:var(--bg-chat); padding:8px 12px; border-radius:6px; font-size:13px; color:var(--accent); margin-bottom:15px;" id="profileAccountId">-</div>
+    <div style="font-size:12px; color:var(--text-secondary); margin-bottom:5px;">我的昵称</div>
+    <input type="text" class="modal-input" id="profileNickname" placeholder="输入昵称" maxlength="12">
+    <div style="font-size:12px; color:var(--text-secondary); margin-bottom:5px;">个性签名</div>
+    <input type="text" class="modal-input" id="profileBio" placeholder="写点什么介绍自己吧" maxlength="30">
+    <div style="font-size:12px; color:var(--text-secondary); margin-bottom:8px;">头像颜色</div>
+    <div style="display:flex; gap:8px; margin-bottom:20px;" id="colorPicker">
+      <div style="width:32px; height:32px; border-radius:50%; background:#B83A6B; cursor:pointer;" onclick="selectColor('#B83A6B')"></div>
+      <div style="width:32px; height:32px; border-radius:50%; background:#3949AB; cursor:pointer;" onclick="selectColor('#3949AB')"></div>
+      <div style="width:32px; height:32px; border-radius:50%; background:#C75B12; cursor:pointer;" onclick="selectColor('#C75B12')"></div>
+      <div style="width:32px; height:32px; border-radius:50%; background:#2E7D52; cursor:pointer;" onclick="selectColor('#2E7D52')"></div>
+      <div style="width:32px; height:32px; border-radius:50%; background:#5E35B1; cursor:pointer;" onclick="selectColor('#5E35B1')"></div>
+      <div style="width:32px; height:32px; border-radius:50%; background:#0277BD; cursor:pointer;" onclick="selectColor('#0277BD')"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeProfile()">取消</button>
+      <button class="modal-btn ok" onclick="saveProfile()">保存</button>
+    </div>
+  </div>
+</div>
+
 <div class="app">
 <!-- 左侧图标导航 -->
 <div class="nav-rail">
-  <div class="logo" title="CipherChat">
-    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5zm-3 8V6a3 3 0 0 1 6 0v3H9z"/></svg>
+  <div class="logo" id="myAvatarTop" title="点我看个人资料" onclick="showMyAccount()" style="cursor:pointer;">
+    <span id="myAvatarTopText">我</span>
   </div>
   <div class="nav-item active" title="会话">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -681,15 +717,16 @@ html, body {
   </div>
   <div class="list-header">
     <span>加密会话</span>
-    <span class="new-chat-btn" onclick="openAddFriend()">+</span>
+    <span style="cursor:pointer; color:var(--accent); font-size:13px; background:rgba(91,155,213,0.15); padding:4px 10px; border-radius:6px;" onclick="openAddFriend()">+ 添加好友</span>
   </div>
   <div class="server-sync-bar">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="7" rx="2"/><rect x="2" y="13" width="20" height="7" rx="2"/><line x1="6" y1="7.5" x2="6" y2="7.5"/><line x1="10" y1="7.5" x2="10" y2="7.5"/><line x1="6" y1="16.5" x2="6" y2="16.5"/><line x1="10" y1="16.5" x2="10" y2="16.5"/></svg>
     <span id="syncStatus">已连接安全服务器</span>
   </div>
   <div class="chat-list" id="chatList">
-    <div style="text-align:center; color:var(--text-muted); padding:30px 10px; font-size:13px;">
-      暂无会话<br>点击右上角 + 添加好友开始聊天
+    <div style="text-align:center; color:var(--text-muted); padding:30px 10px; font-size:13px; line-height:1.8;">
+      暂无会话<br>
+      <span style="color:var(--accent); cursor:pointer;" onclick="openAddFriend()">点这里添加好友开始聊天</span>
     </div>
   </div>
 </div>
@@ -701,10 +738,6 @@ html, body {
       <div class="chat-header-avatar" id="headerAvatar" style="background:#B83A6B">?</div>
       <div>
         <div class="chat-header-name" id="headerName">选择一个会话</div>
-        <div class="encryption-label">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5z"/></svg>
-          端到端加密
-        </div>
       </div>
     </div>
     <div class="chat-header-actions">
@@ -722,14 +755,10 @@ html, body {
 
   <div class="input-area">
     <div class="input-wrapper">
-      <textarea class="msg-input" id="msgInput" rows="1" placeholder="输入加密消息..." disabled></textarea>
+      <textarea class="msg-input" id="msgInput" rows="1" placeholder="输入消息..." disabled></textarea>
       <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
       </button>
-    </div>
-    <div class="encryption-hint">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5z"/></svg>
-      消息端到端加密 · 服务器只存密文 · 删除即永久擦除
     </div>
   </div>
 </div>
@@ -906,6 +935,7 @@ async function pinInput(d) {
       if (registerStep === 1) {
         firstPin = pinBuffer;
         pinBuffer = "";
+        registerStep = 2;  // 切到确认PIN步骤
         updateDots();
         document.getElementById("regStepText").textContent = "再输一遍 PIN 确认";
       } else if (registerStep === 2) {
@@ -944,19 +974,20 @@ async function doRegister(name, pin) {
 
   // 检查Supabase是否连接
   if (!sbClient) {
-    document.getElementById("regError").textContent = "服务器未连接，请刷新重试";
+    alert("错误：服务器未连接，请刷新重试");
+    document.getElementById("regError").textContent = "服务器未连接";
     return;
   }
 
-  // 1. 生成 salt 和加密密钥
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  localStorage.setItem(SALT_KEY, btoa(String.fromCharCode(...salt)));
-  cryptoKey = await deriveKey(pin, salt);
-
-  // 2. 生成账号ID
-  const accountId = "CC-" + Math.random().toString(36).slice(2, 8).toUpperCase();
-
   try {
+    // 1. 生成 salt 和加密密钥
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    localStorage.setItem(SALT_KEY, btoa(String.fromCharCode(...salt)));
+    cryptoKey = await deriveKey(pin, salt);
+
+    // 2. 生成账号ID
+    const accountId = "CC-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+
     // 3. 上传到 Supabase
     const { data, error } = await sbClient
       .from("accounts")
@@ -969,23 +1000,24 @@ async function doRegister(name, pin) {
       .single();
 
     if (error) {
+      alert("注册失败：" + error.message + "\n错误码：" + error.code);
       document.getElementById("regError").textContent = "注册失败: " + error.message;
       return;
     }
+
+    // 4. 保存到本地
+    myAccount = {
+      account_id: accountId,
+      nickname: name,
+      public_key: "local-key-" + accountId
+    };
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(myAccount));
+
+    await startServerSync("register");
   } catch (e) {
-    document.getElementById("regError").textContent = "网络错误: " + e.message;
-    return;
+    alert("出错了：" + e.message + "\n" + e.stack);
+    document.getElementById("regError").textContent = "错误: " + e.message;
   }
-
-  // 4. 保存到本地
-  myAccount = {
-    account_id: accountId,
-    nickname: name,
-    public_key: "local-key-" + accountId
-  };
-  localStorage.setItem(ACCOUNT_KEY, JSON.stringify(myAccount));
-
-  await startServerSync("register");
 }
 
 function pinBackspace() {
@@ -1017,52 +1049,63 @@ async function startServerSync(mode) {
   step.style.display = "block";
   done.style.display = "none";
 
-  title.textContent = "正在连接安全服务器…";
-  step.textContent = "正在验证身份密钥";
-  await sleep(600);
+  try {
+    title.textContent = "正在连接安全服务器…";
+    step.textContent = "正在验证身份密钥";
+    await sleep(600);
 
-  title.textContent = "正在同步会话…";
-  step.textContent = "正在从服务器拉取最新会话";
+    title.textContent = "正在同步会话…";
+    step.textContent = "正在从服务器拉取最新会话";
 
-  // 拉取我参与的会话
-  const { data: convs, error } = await sbClient
-    .from("conversations")
-    .select("*")
-    .contains("participant_ids", [myAccount.account_id]);
+    // 拉取我参与的会话
+    if (sbClient) {
+      const { data: convs, error } = await sbClient
+        .from("conversations")
+        .select("*")
+        .contains("participant_ids", [myAccount.account_id]);
 
-  if (convs) {
-    conversations = convs.map(c => ({
-      id: c.conversation_id,
-      conversation_id: c.conversation_id,
-      peer_id: c.participant_ids.find(p => p !== myAccount.account_id),
-      name: "加载中...",
-      messages: []
-    }));
+      if (convs && !error) {
+        conversations = convs.map(c => ({
+          id: c.conversation_id,
+          conversation_id: c.conversation_id,
+          peer_id: c.participant_ids.find(p => p !== myAccount.account_id),
+          name: "加载中...",
+          messages: []
+        }));
 
-    // 拉取每个会话的对方昵称
-    for (let conv of conversations) {
-      if (conv.peer_id) {
-        const { data: peer } = await sbClient
-          .from("accounts")
-          .select("nickname")
-          .eq("account_id", conv.peer_id)
-          .single();
-        if (peer) conv.name = peer.nickname;
+        // 拉取每个会话的对方昵称
+        for (let conv of conversations) {
+          if (conv.peer_id) {
+            const { data: peer } = await sbClient
+              .from("accounts")
+              .select("nickname")
+              .eq("account_id", conv.peer_id)
+              .single();
+            if (peer) conv.name = peer.nickname;
+          }
+        }
       }
     }
+  } catch (e) {
+    alert("同步会话出错，但不影响进入：" + e.message);
+    console.error("同步错误:", e);
   }
 
   step.style.display = "none";
   done.style.display = "block";
   await sleep(500);
   unlockApp();
-  subscribeRealtime();
+  try { subscribeRealtime(); } catch(e) { console.error("实时订阅失败:", e); }
 }
 
 function unlockApp() {
   document.getElementById("lockScreen").classList.add("hidden");
+  // 更新左上角和左下角头像
+  if (myAccount) {
+    updateAllAvatars();
+  }
   renderChatList();
-  showToast(`欢迎回来，${myAccount.nickname}`);
+  showToast(`欢迎回来，${myAccount?.nickname || ""}`);
 }
 
 // ===== 实时消息订阅 =====
@@ -1150,10 +1193,6 @@ async function renderChat() {
   const area = document.getElementById("messagesArea");
   area.innerHTML = `
     <div class="time-divider">今天</div>
-    <div class="encryption-notice">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5z"/></svg>
-      端到端加密 · 服务器只存密文
-    </div>
   `;
 
   if (msgs) {
@@ -1306,9 +1345,116 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+let selectedColor = "#B83A6B";
+let uploadedAvatar = null; // 上传的头像base64
+
+function handleAvatarUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    // 压缩图片，避免太大
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const size = 100;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      // 居中裁剪成正方形
+      const minDim = Math.min(img.width, img.height);
+      const sx = (img.width - minDim) / 2;
+      const sy = (img.height - minDim) / 2;
+      ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+      uploadedAvatar = canvas.toDataURL('image/jpeg', 0.7);
+      // 预览
+      const preview = document.getElementById("profileAvatarPreview");
+      preview.style.background = "#fff";
+      preview.innerHTML = `<img src="${uploadedAvatar}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 function showMyAccount() {
   if (!myAccount) return;
-  showToast(`我的账号: ${myAccount.account_id}（把这个发给好友）`);
+  // 打开个人资料弹窗
+  document.getElementById("profileAccountId").textContent = myAccount.account_id;
+  document.getElementById("profileNickname").value = myAccount.nickname;
+  document.getElementById("profileBio").value = myAccount.bio || "";
+  selectedColor = myAccount.color || "#B83A6B";
+  uploadedAvatar = myAccount.avatar || null;
+  const preview = document.getElementById("profileAvatarPreview");
+  if (uploadedAvatar) {
+    preview.style.background = "#fff";
+    preview.innerHTML = `<img src="${uploadedAvatar}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+  } else {
+    preview.style.background = selectedColor;
+    preview.textContent = myAccount.nickname.charAt(0);
+  }
+  document.getElementById("profileModal").classList.add("show");
+  // 自动复制账号ID
+  navigator.clipboard.writeText(myAccount.account_id).then(() => {
+    showToast("账号ID已复制，直接粘贴发给好友");
+  });
+}
+
+function selectColor(color) {
+  selectedColor = color;
+  uploadedAvatar = null; // 选颜色就不用自定义图片了
+  const preview = document.getElementById("profileAvatarPreview");
+  preview.style.background = color;
+  preview.textContent = myAccount?.nickname?.charAt(0) || "我";
+}
+
+function closeProfile() {
+  document.getElementById("profileModal").classList.remove("show");
+}
+
+async function saveProfile() {
+  const newName = document.getElementById("profileNickname").value.trim();
+  const newBio = document.getElementById("profileBio").value.trim();
+  if (!newName) {
+    alert("昵称不能为空");
+    return;
+  }
+  // 更新本地
+  myAccount.nickname = newName;
+  myAccount.color = selectedColor;
+  myAccount.bio = newBio;
+  myAccount.avatar = uploadedAvatar;
+  localStorage.setItem(ACCOUNT_KEY, JSON.stringify(myAccount));
+  // 更新头像显示
+  updateAllAvatars();
+  // 同步到服务器
+  try {
+    await sbClient.from("accounts").update({
+      nickname: newName
+    }).eq("account_id", myAccount.account_id);
+  } catch(e) {
+    console.error("同步到服务器失败:", e);
+  }
+  closeProfile();
+  showToast("资料已保存");
+  renderChatList();
+}
+
+function updateAllAvatars() {
+  const topAvatar = document.getElementById("myAvatarTop");
+  const navAvatar = document.querySelector(".avatar-nav");
+  if (myAccount.avatar) {
+    topAvatar.style.background = "#fff";
+    topAvatar.innerHTML = `<img src="${myAccount.avatar}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+    navAvatar.style.background = "#fff";
+    navAvatar.innerHTML = `<img src="${myAccount.avatar}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+  } else {
+    const color = myAccount.color || "#B83A6B";
+    topAvatar.style.background = color;
+    topAvatar.textContent = myAccount.nickname.charAt(0);
+    navAvatar.style.background = color;
+    navAvatar.textContent = myAccount.nickname.charAt(0);
+  }
 }
 
 // 回车发送
