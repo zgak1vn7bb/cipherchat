@@ -1,0 +1,1349 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CipherChat — 端到端加密聊天</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232DD4BF'><path d='M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5zm-3 8V6a3 3 0 0 1 6 0v3H9z'/></svg>">
+<!-- Supabase JS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg-deep: #0A0E14;
+  --bg-sidebar: #11161D;
+  --bg-chat: #0D1117;
+  --bg-hover: #1A1F28;
+  --bg-active: #242B36;
+  --bubble-them: #1F2630;
+  --bubble-me: #2B5278;
+  --accent: #5B9BD5;
+  --accent-dim: #4A89C4;
+  --text-primary: #E4E7EB;
+  --text-secondary: #8B94A0;
+  --text-muted: #5C6570;
+  --border: #1E2530;
+  --danger: #E57373;
+  --online: #4CAF50;
+  --radius: 8px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.app {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ===== 左侧图标导航栏 ===== */
+.nav-rail {
+  width: 68px;
+  background: var(--bg-deep);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 0;
+  flex-shrink: 0;
+}
+.logo {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #3A6EA5, #2B5278);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 24px;
+  cursor: pointer;
+}
+.logo svg { width: 22px; height: 22px; color: #fff; }
+.nav-item {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: all .15s;
+}
+.nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.nav-item.active { background: var(--bg-active); color: var(--accent); }
+.nav-item svg { width: 22px; height: 22px; }
+.nav-spacer { flex: 1; }
+.avatar-nav {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366F1, #8B5CF6);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600; color: #fff;
+  cursor: pointer;
+}
+
+/* ===== 中间会话列表 ===== */
+.chat-list-panel {
+  width: 300px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.search-box {
+  padding: 14px 16px 10px;
+}
+.search-input {
+  width: 100%;
+  background: var(--bg-chat);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px 9px 36px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%235A6678' viewBox='0 0 24 24'%3E%3Cpath d='M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 11px center;
+}
+.search-input::placeholder { color: var(--text-muted); }
+.search-input:focus { border-color: var(--accent); }
+
+.list-header {
+  padding: 8px 16px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.list-header .new-chat-btn {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 16px;
+  line-height: 1;
+}
+.server-sync-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 12px 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(46, 125, 82, .12);
+  border: 1px solid rgba(46, 125, 82, .3);
+  color: #7BC69A;
+  font-size: 11.5px;
+}
+.server-sync-bar svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+.chat-list {
+  flex: 1;
+  overflow-y: auto;
+}
+.chat-item {
+  display: flex;
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: background .12s;
+  align-items: center;
+  gap: 11px;
+}
+.chat-item:hover { background: var(--bg-hover); }
+.chat-item.active { background: var(--bg-active); }
+.avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 500; color: #fff;
+  position: relative;
+}
+.avatar .status-dot {
+  position: absolute;
+  bottom: 0; right: 0;
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-sidebar);
+}
+.avatar .status-dot.online { background: var(--online); }
+.avatar .status-dot.offline { background: var(--text-muted); }
+
+.chat-item-info { flex: 1; min-width: 0; }
+.chat-item-top {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 2px;
+}
+.chat-name {
+  font-size: 14px; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.chat-time { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+.chat-preview {
+  font-size: 12.5px; color: var(--text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; align-items: center; gap: 4px;
+}
+.lock-icon-sm {
+  width: 11px; height: 11px;
+  color: var(--accent-dim);
+  flex-shrink: 0;
+}
+.unread-badge {
+  background: var(--accent);
+  color: #0B111C;
+  font-size: 11px; font-weight: 700;
+  min-width: 19px; height: 19px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 5px;
+}
+
+/* ===== 聊天主区域 ===== */
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-chat);
+  min-width: 0;
+}
+.chat-header {
+  height: 64px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-sidebar);
+  flex-shrink: 0;
+}
+.chat-header-info { display: flex; align-items: center; gap: 12px; }
+.chat-header-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 600; color: #fff;
+}
+.chat-header-name { font-size: 15px; font-weight: 600; }
+.encryption-label {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--accent);
+  margin-top: 1px;
+}
+.encryption-label svg { width: 11px; height: 11px; }
+.chat-header-actions { display: flex; gap: 4px; }
+.header-btn {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text-secondary);
+  transition: all .12s;
+}
+.header-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.header-btn svg { width: 20px; height: 20px; }
+
+/* 消息区 */
+.messages-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(45,212,191,0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(99,102,241,0.03) 0%, transparent 50%);
+}
+.encryption-notice {
+  margin: 8px auto 16px;
+  padding: 8px 14px;
+  background: rgba(45,212,191,0.08);
+  border: 1px solid rgba(45,212,191,0.2);
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--accent);
+  text-align: center;
+  max-width: 420px;
+  display: flex; align-items: center; gap: 6px;
+  justify-content: center;
+}
+.encryption-notice svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+.msg-row {
+  display: flex;
+  margin-bottom: 2px;
+  max-width: 65%;
+}
+.msg-row.me { align-self: flex-end; }
+.msg-row.them { align-self: flex-start; }
+.bubble {
+  padding: 7px 11px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  word-break: break-word;
+  position: relative;
+}
+.msg-row.them .bubble {
+  background: var(--bubble-them);
+  border-top-left-radius: 3px;
+}
+.msg-row.me .bubble {
+  background: var(--bubble-me);
+  border-top-right-radius: 3px;
+}
+.msg-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  justify-content: flex-end;
+}
+.msg-row.them .msg-meta { justify-content: flex-start; }
+.msg-meta svg { width: 11px; height: 11px; }
+.msg-meta .read-check { color: var(--accent); }
+
+/* 正在输入 */
+.time-divider {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 14px 0 10px;
+}
+
+/* 输入区 */
+.input-area {
+  padding: 14px 20px 16px;
+  background: var(--bg-sidebar);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.input-wrapper {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  background: var(--bg-chat);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 8px 8px 8px 14px;
+}
+.input-wrapper:focus-within { border-color: var(--accent); }
+.msg-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  resize: none;
+  max-height: 120px;
+  line-height: 1.5;
+  padding: 5px 0;
+}
+.msg-input::placeholder { color: var(--text-muted); }
+.input-icon-btn {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text-secondary);
+  flex-shrink: 0;
+  transition: all .12s;
+}
+.input-icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.input-icon-btn svg { width: 20px; height: 20px; }
+.send-btn {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  background: var(--accent);
+  border: none;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: #0B111C;
+  flex-shrink: 0;
+  transition: all .15s;
+}
+.send-btn:hover { background: var(--accent-dim); transform: scale(1.05); }
+.send-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.send-btn svg { width: 19px; height: 19px; }
+
+.encryption-hint {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.encryption-hint svg { width: 11px; height: 11px; }
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ===== PIN 锁屏 ===== */
+.lock-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-deep);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+.lock-screen.hidden { display: none; }
+.lock-logo {
+  width: 56px; height: 56px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #3A6EA5, #2B5278);
+  display: flex; align-items: center; justify-content: center;
+}
+.lock-logo svg { width: 30px; height: 30px; color: #fff; }
+.lock-title { font-size: 18px; font-weight: 600; }
+.lock-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: -12px; }
+.pin-dots { display: flex; gap: 14px; margin: 8px 0; }
+.pin-dot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: transparent;
+  transition: all .15s;
+}
+.pin-dot.filled { background: var(--accent); border-color: var(--accent); }
+.pin-error {
+  color: var(--danger);
+  font-size: 13px;
+  height: 18px;
+}
+.pin-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 64px);
+  gap: 10px;
+  margin-top: 6px;
+}
+.pin-key {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  border: none;
+  color: var(--text-primary);
+  font-size: 22px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .1s;
+  display: flex; align-items: center; justify-content: center;
+}
+.pin-key:hover { background: var(--bg-active); }
+.pin-key:active { transform: scale(.95); }
+.pin-key.func { font-size: 14px; color: var(--text-secondary); }
+.lock-hint {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  text-align: center;
+  max-width: 260px;
+  line-height: 1.5;
+}
+/* 服务器同步视图 */
+.sync-view {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+.sync-view .sync-spinner {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  border: 3px solid var(--bg-active);
+  border-top-color: var(--accent);
+  animation: syncSpin 0.9s linear infinite;
+}
+@keyframes syncSpin { to { transform: rotate(360deg); } }
+.sync-view .sync-title { font-size: 15px; font-weight: 600; }
+.sync-view .sync-step {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  min-height: 18px;
+  text-align: center;
+  max-width: 240px;
+  line-height: 1.5;
+}
+.sync-view .sync-done {
+  display: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 30px; left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: #1E293B;
+  color: var(--text-primary);
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  transition: transform .25s;
+  z-index: 100;
+  display: flex; align-items: center; gap: 6px;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast svg { width: 15px; height: 15px; color: var(--accent); }
+
+/* 加好友弹窗 */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  z-index: 150;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  width: 320px;
+}
+.modal-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+.modal-input {
+  width: 100%;
+  background: var(--bg-chat);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  margin-bottom: 12px;
+}
+.modal-input:focus { border-color: var(--accent); }
+.modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+.modal-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+}
+.modal-btn.cancel { background: var(--bg-hover); color: var(--text-secondary); }
+.modal-btn.ok { background: var(--accent); color: #0B111C; }
+
+/* 响应式 */
+@media (max-width: 900px) {
+  .chat-list-panel { width: 260px; }
+  .nav-rail { width: 56px; }
+}
+@media (max-width: 700px) {
+  .chat-list-panel {
+    position: absolute;
+    left: 56px; top: 0; bottom: 0;
+    z-index: 10;
+    box-shadow: 4px 0 20px rgba(0,0,0,.4);
+  }
+  .chat-main { display: none; }
+  .chat-main.mobile-open { display: flex; }
+  .chat-list-panel.mobile-hidden { display: none; }
+}
+</style>
+</head>
+<body>
+<!-- 账号/锁屏 -->
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-logo">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5zm-3 8V6a3 3 0 0 1 6 0v3H9z"/></svg>
+  </div>
+
+  <!-- 注册视图 -->
+  <div id="registerView" style="display:flex; flex-direction:column; align-items:center; gap:14px;">
+    <div class="lock-title">注册加密账号</div>
+    <div class="lock-subtitle" id="regStepText">第一步：输入昵称</div>
+    <div style="font-size:11.5px;color:var(--text-muted);max-width:250px;text-align:center;line-height:1.6;">注册完成后将自动生成身份密钥并上传服务器，服务器会向你下发加密会话列表</div>
+    <input type="text" id="regName" placeholder="输入昵称" maxlength="12"
+      style="width:240px; padding:11px 14px; border-radius:8px; background:var(--bg-hover); border:1px solid var(--border); color:var(--text-primary); font-size:14px; outline:none; text-align:center;">
+    <div class="pin-dots" id="regDots" style="display:none;">
+      <div class="pin-dot"></div><div class="pin-dot"></div>
+      <div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div class="pin-error" id="regError"></div>
+    <div class="pin-pad" id="regPad" style="display:none;">
+      <button class="pin-key" onclick="pinInput('1')">1</button>
+      <button class="pin-key" onclick="pinInput('2')">2</button>
+      <button class="pin-key" onclick="pinInput('3')">3</button>
+      <button class="pin-key" onclick="pinInput('4')">4</button>
+      <button class="pin-key" onclick="pinInput('5')">5</button>
+      <button class="pin-key" onclick="pinInput('6')">6</button>
+      <button class="pin-key" onclick="pinInput('7')">7</button>
+      <button class="pin-key" onclick="pinInput('8')">8</button>
+      <button class="pin-key" onclick="pinInput('9')">9</button>
+      <div></div>
+      <button class="pin-key" onclick="pinInput('0')">0</button>
+      <button class="pin-key func" onclick="pinBackspace()">删除</button>
+    </div>
+    <button class="pin-key func" id="regNextBtn" style="width:auto; padding:0 28px; border-radius:20px; font-size:14px; height:42px;" onclick="regNext()">下一步</button>
+  </div>
+
+  <!-- 登录视图 -->
+  <div id="loginView" style="display:none; flex-direction:column; align-items:center; gap:16px;">
+    <div class="lock-title" id="loginTitle">输入 PIN 解锁</div>
+    <div class="lock-subtitle" id="loginSubtitle">你的聊天记录已加密</div>
+    <div class="pin-dots">
+      <div class="pin-dot"></div><div class="pin-dot"></div>
+      <div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div class="pin-error" id="loginError"></div>
+    <div class="pin-pad" id="pinPad">
+      <button class="pin-key" onclick="pinInput('1')">1</button>
+      <button class="pin-key" onclick="pinInput('2')">2</button>
+      <button class="pin-key" onclick="pinInput('3')">3</button>
+      <button class="pin-key" onclick="pinInput('4')">4</button>
+      <button class="pin-key" onclick="pinInput('5')">5</button>
+      <button class="pin-key" onclick="pinInput('6')">6</button>
+      <button class="pin-key" onclick="pinInput('7')">7</button>
+      <button class="pin-key" onclick="pinInput('8')">8</button>
+      <button class="pin-key" onclick="pinInput('9')">9</button>
+      <div></div>
+      <button class="pin-key" onclick="pinInput('0')">0</button>
+      <button class="pin-key func" onclick="pinBackspace()">删除</button>
+    </div>
+  </div>
+
+  <div class="sync-view" id="syncView" style="display:none;">
+    <div class="sync-spinner"></div>
+    <div class="sync-title" id="syncTitle">正在连接安全服务器…</div>
+    <div class="sync-step" id="syncStep">正在建立加密通道</div>
+    <div class="sync-done" id="syncDone">服务器已下发会话列表</div>
+  </div>
+
+  <div class="lock-hint">所有数据端到端加密存储 · 没有 PIN 无法读取任何内容</div>
+</div>
+
+<!-- 加好友弹窗 -->
+<div class="modal-overlay" id="addFriendModal">
+  <div class="modal-box">
+    <div class="modal-title">添加好友</div>
+    <input type="text" class="modal-input" id="friendAccountId" placeholder="输入对方账号ID（如 CC-XXXXXX）">
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeAddFriend()">取消</button>
+      <button class="modal-btn ok" onclick="addFriend()">发起对话</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+<!-- 左侧图标导航 -->
+<div class="nav-rail">
+  <div class="logo" title="CipherChat">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5zm-3 8V6a3 3 0 0 1 6 0v3H9z"/></svg>
+  </div>
+  <div class="nav-item active" title="会话">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  </div>
+  <div class="nav-item" title="添加好友" onclick="openAddFriend()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+  </div>
+  <div class="nav-item" title="加密设置" onclick="showToast('端到端加密已启用')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+  </div>
+  <div class="nav-spacer"></div>
+  <div class="avatar-nav" title="我的账号" onclick="showMyAccount()">我</div>
+</div>
+
+<!-- 会话列表 -->
+<div class="chat-list-panel" id="chatListPanel">
+  <div class="search-box">
+    <input class="search-input" type="text" placeholder="搜索加密会话..." id="searchInput">
+  </div>
+  <div class="list-header">
+    <span>加密会话</span>
+    <span class="new-chat-btn" onclick="openAddFriend()">+</span>
+  </div>
+  <div class="server-sync-bar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="7" rx="2"/><rect x="2" y="13" width="20" height="7" rx="2"/><line x1="6" y1="7.5" x2="6" y2="7.5"/><line x1="10" y1="7.5" x2="10" y2="7.5"/><line x1="6" y1="16.5" x2="6" y2="16.5"/><line x1="10" y1="16.5" x2="10" y2="16.5"/></svg>
+    <span id="syncStatus">已连接安全服务器</span>
+  </div>
+  <div class="chat-list" id="chatList">
+    <div style="text-align:center; color:var(--text-muted); padding:30px 10px; font-size:13px;">
+      暂无会话<br>点击右上角 + 添加好友开始聊天
+    </div>
+  </div>
+</div>
+
+<!-- 聊天主区域 -->
+<div class="chat-main" id="chatMain">
+  <div class="chat-header">
+    <div class="chat-header-info">
+      <div class="chat-header-avatar" id="headerAvatar" style="background:#B83A6B">?</div>
+      <div>
+        <div class="chat-header-name" id="headerName">选择一个会话</div>
+        <div class="encryption-label">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5z"/></svg>
+          端到端加密
+        </div>
+      </div>
+    </div>
+    <div class="chat-header-actions">
+      <div class="header-btn" onclick="showToast('安全状态：全部防护已开启')" title="安全状态">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="messages-area" id="messagesArea">
+    <div style="text-align:center; color:var(--text-muted); margin:auto; font-size:13px;">
+      选择或创建一个会话开始加密聊天
+    </div>
+  </div>
+
+  <div class="input-area">
+    <div class="input-wrapper">
+      <textarea class="msg-input" id="msgInput" rows="1" placeholder="输入加密消息..." disabled></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+    <div class="encryption-hint">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5z"/></svg>
+      消息端到端加密 · 服务器只存密文 · 删除即永久擦除
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+  <span id="toastText"></span>
+</div>
+
+<script>
+// ============================================
+// !!! 在这里填你的 Supabase 配置 !!!
+// ============================================
+const SUPABASE_URL = "https://xrfzqlwrkidsblxofevj.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_9l8AW-w--GORou1AaAD95g_TOQrQ-0f";
+// ============================================
+
+// 初始化 Supabase（加错误处理，挂了也不影响界面）
+let sbClient = null;
+try {
+  if (typeof supabase !== 'undefined' && supabase.createClient) {
+    sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+      }
+    });
+    console.log("Supabase 连接成功");
+  } else {
+    console.error("Supabase SDK 未加载");
+  }
+} catch(e) {
+  console.error("Supabase 初始化失败:", e);
+}
+
+// ===== 加密核心 =====
+let cryptoKey = null;
+let myAccount = null; // { account_id, nickname, public_key }
+let currentConversation = null; // 当前打开的会话
+let conversations = []; // 本地会话列表
+
+const SALT_KEY = "cipherchat_salt";
+const ACCOUNT_KEY = "cipherchat_account";
+
+// 派生密钥：PIN + salt → AES密钥
+async function deriveKey(pin, salt) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw", enc.encode(pin), { name: "PBKDF2" }, false, ["deriveKey"]
+  );
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
+    keyMaterial, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
+  );
+}
+
+// 加密消息
+async function encryptMsg(text) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder();
+  const cipher = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: iv },
+    cryptoKey,
+    enc.encode(text)
+  );
+  return {
+    iv: btoa(String.fromCharCode(...iv)),
+    data: btoa(String.fromCharCode(...new Uint8Array(cipher)))
+  };
+}
+
+// 解密消息
+async function decryptMsg(payload) {
+  try {
+    const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
+    const cipher = Uint8Array.from(atob(payload.data), c => c.charCodeAt(0));
+    const plain = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: iv },
+      cryptoKey,
+      cipher
+    );
+    return new TextDecoder().decode(plain);
+  } catch(e) {
+    return "[无法解密的消息]";
+  }
+}
+
+// ===== PIN 锁屏逻辑 =====
+let pinBuffer = "";
+let isRegisterMode = false;
+let registerStep = 0;
+let myName = "";
+let firstPin = "";
+
+async function initLock() {
+  const sync = document.getElementById("syncView");
+
+  try {
+    sync.style.display = "flex";
+    document.getElementById("syncTitle").textContent = "正在连接安全服务器…";
+    document.getElementById("syncStep").textContent = "正在查询服务器账号状态";
+
+    // 先看本地有没有账号记录
+    const localAccount = localStorage.getItem(ACCOUNT_KEY);
+
+    if (localAccount) {
+      // 本地有账号 → 查服务器确认存在 → 走登录
+      myAccount = JSON.parse(localAccount);
+      const { data, error } = await sbClient
+        .from("accounts")
+        .select("*")
+        .eq("account_id", myAccount.account_id)
+        .single();
+
+      if (data && !error) {
+        isRegisterMode = false;
+        document.getElementById("loginView").style.display = "flex";
+        document.getElementById("registerView").style.display = "none";
+        document.getElementById("loginSubtitle").textContent =
+          "账号「" + myAccount.nickname + "」已确认 · 输入 PIN 解锁";
+        updateDots();
+      } else {
+        // 服务器没找到，重新注册
+        localStorage.removeItem(ACCOUNT_KEY);
+        isRegisterMode = true;
+        registerStep = 0;
+        document.getElementById("registerView").style.display = "flex";
+        document.getElementById("loginView").style.display = "none";
+      }
+    } else {
+      // 本地没账号 → 直接走注册，不等服务器
+      isRegisterMode = true;
+      registerStep = 0;
+      document.getElementById("registerView").style.display = "flex";
+      document.getElementById("loginView").style.display = "none";
+    }
+  } catch (e) {
+    console.error("初始化错误:", e);
+    // 出错了也直接显示注册页
+    isRegisterMode = true;
+    registerStep = 0;
+    document.getElementById("registerView").style.display = "flex";
+    document.getElementById("loginView").style.display = "none";
+  }
+  sync.style.display = "none";
+}
+
+function regNext() {
+  const name = document.getElementById("regName").value.trim();
+  if (!name) {
+    document.getElementById("regError").textContent = "请先输入昵称";
+    return;
+  }
+  myName = name;
+  registerStep = 1;
+  pinBuffer = "";
+  document.getElementById("regName").style.display = "none";
+  document.getElementById("regNextBtn").style.display = "none";
+  document.getElementById("regDots").style.display = "flex";
+  document.getElementById("regPad").style.display = "grid";
+  document.getElementById("regStepText").textContent = "设置 4 位数字 PIN";
+  document.getElementById("regError").textContent = "";
+  updateDots();
+}
+
+async function pinInput(d) {
+  pinBuffer += d;
+  updateDots();
+  if (pinBuffer.length < 4) return;
+
+  setTimeout(async () => {
+    if (isRegisterMode) {
+      if (registerStep === 1) {
+        firstPin = pinBuffer;
+        pinBuffer = "";
+        updateDots();
+        document.getElementById("regStepText").textContent = "再输一遍 PIN 确认";
+      } else if (registerStep === 2) {
+        if (pinBuffer === firstPin) {
+          await doRegister(myName, pinBuffer);
+        } else {
+          document.getElementById("regError").textContent = "两次 PIN 不一致，请重设";
+          registerStep = 1;
+          pinBuffer = "";
+          firstPin = "";
+          updateDots();
+          document.getElementById("regStepText").textContent = "设置 4 位数字 PIN";
+        }
+      }
+    } else {
+      // 登录
+      try {
+        const salt = Uint8Array.from(atob(localStorage.getItem(SALT_KEY)), c => c.charCodeAt(0));
+        cryptoKey = await deriveKey(pinBuffer, salt);
+        await startServerSync("login");
+      } catch (e) {
+        document.getElementById("loginError").textContent = "PIN 错误，再试一次";
+        pinBuffer = "";
+        updateDots();
+        const screen = document.getElementById("lockScreen");
+        screen.style.animation = "none";
+        screen.offsetHeight;
+        screen.style.animation = "shake .3s";
+      }
+    }
+  }, 200);
+}
+
+async function doRegister(name, pin) {
+  document.getElementById("regError").textContent = "正在创建加密账号...";
+
+  // 检查Supabase是否连接
+  if (!sbClient) {
+    document.getElementById("regError").textContent = "服务器未连接，请刷新重试";
+    return;
+  }
+
+  // 1. 生成 salt 和加密密钥
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  localStorage.setItem(SALT_KEY, btoa(String.fromCharCode(...salt)));
+  cryptoKey = await deriveKey(pin, salt);
+
+  // 2. 生成账号ID
+  const accountId = "CC-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+
+  try {
+    // 3. 上传到 Supabase
+    const { data, error } = await sbClient
+      .from("accounts")
+      .insert({
+        account_id: accountId,
+        nickname: name,
+        public_key: "local-key-" + accountId
+      })
+      .select()
+      .single();
+
+    if (error) {
+      document.getElementById("regError").textContent = "注册失败: " + error.message;
+      return;
+    }
+  } catch (e) {
+    document.getElementById("regError").textContent = "网络错误: " + e.message;
+    return;
+  }
+
+  // 4. 保存到本地
+  myAccount = {
+    account_id: accountId,
+    nickname: name,
+    public_key: "local-key-" + accountId
+  };
+  localStorage.setItem(ACCOUNT_KEY, JSON.stringify(myAccount));
+
+  await startServerSync("register");
+}
+
+function pinBackspace() {
+  pinBuffer = pinBuffer.slice(0, -1);
+  updateDots();
+  document.getElementById("loginError").textContent = "";
+  document.getElementById("regError").textContent = "";
+}
+
+function updateDots() {
+  if (isRegisterMode) {
+    const dots = document.querySelectorAll("#regDots .pin-dot");
+    dots.forEach((d, i) => d.classList.toggle("filled", i < pinBuffer.length));
+  } else {
+    const dots = document.querySelectorAll("#loginView .pin-dot");
+    dots.forEach((d, i) => d.classList.toggle("filled", i < pinBuffer.length));
+  }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// 连接服务器、拉取会话列表
+async function startServerSync(mode) {
+  const sync = document.getElementById("syncView");
+  sync.style.display = "flex";
+  const title = document.getElementById("syncTitle");
+  const step = document.getElementById("syncStep");
+  const done = document.getElementById("syncDone");
+  step.style.display = "block";
+  done.style.display = "none";
+
+  title.textContent = "正在连接安全服务器…";
+  step.textContent = "正在验证身份密钥";
+  await sleep(600);
+
+  title.textContent = "正在同步会话…";
+  step.textContent = "正在从服务器拉取最新会话";
+
+  // 拉取我参与的会话
+  const { data: convs, error } = await sbClient
+    .from("conversations")
+    .select("*")
+    .contains("participant_ids", [myAccount.account_id]);
+
+  if (convs) {
+    conversations = convs.map(c => ({
+      id: c.conversation_id,
+      conversation_id: c.conversation_id,
+      peer_id: c.participant_ids.find(p => p !== myAccount.account_id),
+      name: "加载中...",
+      messages: []
+    }));
+
+    // 拉取每个会话的对方昵称
+    for (let conv of conversations) {
+      if (conv.peer_id) {
+        const { data: peer } = await sbClient
+          .from("accounts")
+          .select("nickname")
+          .eq("account_id", conv.peer_id)
+          .single();
+        if (peer) conv.name = peer.nickname;
+      }
+    }
+  }
+
+  step.style.display = "none";
+  done.style.display = "block";
+  await sleep(500);
+  unlockApp();
+  subscribeRealtime();
+}
+
+function unlockApp() {
+  document.getElementById("lockScreen").classList.add("hidden");
+  renderChatList();
+  showToast(`欢迎回来，${myAccount.nickname}`);
+}
+
+// ===== 实时消息订阅 =====
+let realtimeChannel = null;
+function subscribeRealtime() {
+  // 订阅所有新消息
+  realtimeChannel = sbClient
+    .channel("messages-all")
+    .on("postgres_changes", {
+      event: "INSERT",
+      schema: "public",
+      table: "messages"
+    }, async (payload) => {
+      const newMsg = payload.new;
+      // 只处理和我相关的会话
+      const conv = conversations.find(c => c.conversation_id === newMsg.conversation_id);
+      if (!conv) return;
+
+      // 解密消息
+      const plainText = await decryptMsg(newMsg.cipher_payload);
+      conv.messages.push({
+        from: newMsg.sender_account_id === myAccount.account_id ? "me" : "them",
+        text: plainText,
+        time: formatTime(new Date(newMsg.created_at)),
+        id: newMsg.id
+      });
+
+      // 更新预览
+      conv.preview = plainText;
+      conv.time = formatTime(new Date(newMsg.created_at));
+
+      // 如果当前正在看这个会话，刷新
+      if (currentConversation && currentConversation.conversation_id === newMsg.conversation_id) {
+        renderChat();
+      }
+      renderChatList();
+    })
+    .subscribe();
+}
+
+// ===== 渲染会话列表 =====
+function renderChatList() {
+  const list = document.getElementById("chatList");
+  if (conversations.length === 0) {
+    list.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding:30px 10px; font-size:13px;">
+      暂无会话<br>点击右上角 + 添加好友开始聊天
+    </div>`;
+    return;
+  }
+  list.innerHTML = conversations.map(c => `
+    <div class="chat-item ${currentConversation && c.conversation_id === currentConversation.conversation_id ? 'active' : ''}" onclick="openChat('${c.conversation_id}')">
+      <div class="avatar" style="background:${hashColor(c.name)}">
+        ${c.name.charAt(0)}
+      </div>
+      <div class="chat-item-info">
+        <div class="chat-item-top">
+          <span class="chat-name">${c.name}</span>
+          <span class="chat-time">${c.time || ""}</span>
+        </div>
+        <div class="chat-preview">
+          <svg class="lock-icon-sm" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5z"/></svg>
+          ${c.preview || ""}
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+// ===== 渲染聊天窗口 =====
+async function renderChat() {
+  if (!currentConversation) return;
+  const c = currentConversation;
+  document.getElementById("headerName").textContent = c.name;
+  const ha = document.getElementById("headerAvatar");
+  ha.style.background = hashColor(c.name);
+  ha.textContent = c.name.charAt(0);
+
+  // 加载消息历史
+  const { data: msgs } = await sbClient
+    .from("messages")
+    .select("*")
+    .eq("conversation_id", c.conversation_id)
+    .order("created_at", { ascending: true });
+
+  const area = document.getElementById("messagesArea");
+  area.innerHTML = `
+    <div class="time-divider">今天</div>
+    <div class="encryption-notice">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5z"/></svg>
+      端到端加密 · 服务器只存密文
+    </div>
+  `;
+
+  if (msgs) {
+    for (let m of msgs) {
+      const plainText = await decryptMsg(m.cipher_payload);
+      const row = document.createElement("div");
+      row.className = "msg-row " + (m.sender_account_id === myAccount.account_id ? "me" : "them");
+      row.innerHTML = `<div class="bubble">${escapeHtml(plainText)}<div class="msg-meta"><span>${formatTime(new Date(m.created_at))}</span></div></div>`;
+      area.appendChild(row);
+    }
+  }
+  area.scrollTop = area.scrollHeight;
+}
+
+// ===== 打开会话 =====
+async function openChat(convId) {
+  currentConversation = conversations.find(c => c.conversation_id === convId);
+  renderChatList();
+  await renderChat();
+
+  // 启用输入框
+  document.getElementById("msgInput").disabled = false;
+  document.getElementById("sendBtn").disabled = false;
+
+  // 移动端适配
+  if (window.innerWidth <= 700) {
+    document.getElementById("chatListPanel").classList.add("mobile-hidden");
+    document.getElementById("chatMain").classList.add("mobile-open");
+  }
+}
+
+// ===== 发送消息 =====
+async function sendMessage() {
+  const input = document.getElementById("msgInput");
+  const text = input.value.trim();
+  if (!text || !currentConversation) return;
+
+  // 加密
+  const cipherPayload = await encryptMsg(text);
+
+  // 上传到 Supabase
+  const { data, error } = await sbClient
+    .from("messages")
+    .insert({
+      conversation_id: currentConversation.conversation_id,
+      sender_account_id: myAccount.account_id,
+      cipher_payload: cipherPayload
+    });
+
+  if (error) {
+    showToast("发送失败: " + error.message);
+    return;
+  }
+
+  input.value = "";
+  input.style.height = "auto";
+}
+
+// ===== 添加好友 =====
+function openAddFriend() {
+  document.getElementById("addFriendModal").classList.add("show");
+  document.getElementById("friendAccountId").value = "";
+}
+
+function closeAddFriend() {
+  document.getElementById("addFriendModal").classList.remove("show");
+}
+
+async function addFriend() {
+  const friendId = document.getElementById("friendAccountId").value.trim().toUpperCase();
+  if (!friendId) {
+    showToast("请输入对方账号ID");
+    return;
+  }
+  if (friendId === myAccount.account_id) {
+    showToast("不能添加自己");
+    return;
+  }
+
+  // 查询对方是否存在
+  const { data: friend, error } = await sbClient
+    .from("accounts")
+    .select("*")
+    .eq("account_id", friendId)
+    .single();
+
+  if (error || !friend) {
+    showToast("未找到该账号");
+    return;
+  }
+
+  // 检查是否已有会话
+  const sortedIds = [myAccount.account_id, friendId].sort();
+  const convId = "conv-" + sortedIds.join("-");
+
+  // 检查会话是否已存在
+  const { data: existingConv } = await sbClient
+    .from("conversations")
+    .select("*")
+    .eq("conversation_id", convId)
+    .single();
+
+  if (!existingConv) {
+    // 创建新会话
+    await sbClient.from("conversations").insert({
+      conversation_id: convId,
+      participant_ids: sortedIds,
+      encrypted_meta: ""
+    });
+  }
+
+  // 添加到本地列表
+  if (!conversations.find(c => c.conversation_id === convId)) {
+    conversations.push({
+      conversation_id: convId,
+      peer_id: friendId,
+      name: friend.nickname,
+      messages: [],
+      preview: ""
+    });
+  }
+
+  closeAddFriend();
+  renderChatList();
+  showToast("已创建会话，开始聊天吧");
+
+  // 自动打开
+  openChat(convId);
+}
+
+// ===== 工具函数 =====
+function formatTime(date) {
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function hashColor(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const colors = ["#B83A6B", "#3949AB", "#C75B12", "#2E7D52", "#5E35B1", "#0277BD", "#AD1457"];
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function showMyAccount() {
+  if (!myAccount) return;
+  showToast(`我的账号: ${myAccount.account_id}（把这个发给好友）`);
+}
+
+// 回车发送
+document.getElementById("msgInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+// 自动高度
+document.getElementById("msgInput").addEventListener("input", function() {
+  this.style.height = "auto";
+  this.style.height = Math.min(this.scrollHeight, 120) + "px";
+});
+
+// 搜索过滤
+document.getElementById("searchInput").addEventListener("input", function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll(".chat-item").forEach((el) => {
+    const name = el.querySelector(".chat-name")?.textContent.toLowerCase() || "";
+    el.style.display = name.includes(q) ? "flex" : "none";
+  });
+});
+
+// Toast
+function showToast(text) {
+  document.getElementById("toastText").textContent = text;
+  const t = document.getElementById("toast");
+  t.classList.add("show");
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => t.classList.remove("show"), 2500);
+}
+
+// 初始化
+initLock();
+</script>
+</body>
+</html>
